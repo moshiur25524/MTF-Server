@@ -13,22 +13,28 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 async function run() {
     try {
-       await client.connect()
-       const serviceCollection = client.db("machine_tools").collection("services");
-       const BookingsCollection = client.db("machine_tools").collection("bookings");
+        await client.connect()
+        const serviceCollection = client.db("machine_tools").collection("services");
+        const BookingsCollection = client.db("machine_tools").collection("bookings");
 
-       app.get('/tools', async(req, res)=>{
-        const tools = await serviceCollection.find({}).toArray()
-        res.send(tools)
-       })
+        app.get('/tools', async (req, res) => {
+            const tools = await serviceCollection.find({}).toArray()
+            res.send(tools)
+        })
 
-       app.post('/bookings', async(req, res)=>{
-        const bookings = req.body;
-        const result = await BookingsCollection.insertOne(bookings)
-        res.send(result)
-       })
+        app.post('/bookings', async (req, res) => {
+            const bookings = req.body;
+            const query = { treatment: bookings.treatment, date: bookings.date, patient: bookings.patient }
+            const exists = await BookingsCollection.findOne(query);
+            if (exists) {
+                return res.send({ success: false, bookings: exists })
+            }
 
-       console.log('Database connected');
+            const result = await BookingsCollection.insertOne(bookings)
+            return res.send({ success: true , result})
+        })
+
+        console.log('Database connected');
     }
     finally {
         // client.close()
