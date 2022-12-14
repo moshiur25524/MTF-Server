@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
 const port = process.env.PORT || 5000;
 
@@ -35,9 +35,10 @@ async function run() {
         const serviceCollection = client.db("machine_tools").collection("services");
         const BookingsCollection = client.db("machine_tools").collection("bookings");
         const userCollection = client.db('machine_tools').collection("users")
+        const doctorCollection = client.db('machine_tools').collection("doctors")
 
         app.get('/tools', async (req, res) => {
-            const tools = await serviceCollection.find({}).toArray()
+            const tools = await serviceCollection.find({}).project({ name: 1 }).toArray()
             res.send(tools)
         })
 
@@ -46,6 +47,13 @@ async function run() {
             res.send(users)
         })
 
+        // app.delete('/user/:email', async (req, res) => {
+        //     const email = req.params.email;
+        //     const result = await userCollection.deleteOne({ _id: ObjectId(email) })
+        //     res.send(result)
+        // })
+
+        // Find a single admin 
         app.get('/admin/:email', async (req, res) => {
             const email = req.params.email;
             const user = await userCollection.findOne({ email: email })
@@ -53,6 +61,7 @@ async function run() {
             res.send({ admin: isAdmin })
         })
 
+        // Create an admin
         app.put('/user/admin/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
             const requester = req.decoded.email;
@@ -71,6 +80,7 @@ async function run() {
 
         })
 
+        // Generate a token for a registered user
         app.put('/user/:email', async (req, res) => {
             const email = req.params.email;
             const user = req.body;
@@ -86,13 +96,16 @@ async function run() {
             res.send({ result, token })
         })
 
+        app.post('/doctor', async(req, res)=>{
+            const doctor =  req.body
+            const result = await doctorCollection.insertOne(doctor)
+            res.send(result)
+        })
+
+        // Get all the slots which is not yet booked
         app.get('/available', async (req, res) => {
             const date = req.query.date || 'Dec 10, 2022'
-
-            //  get the all services
             const services = await serviceCollection.find().toArray()
-
-            // get the all bookings of that date
             const query = { date: date };
             const bookings = await BookingsCollection.find(query).toArray()
 
@@ -108,6 +121,7 @@ async function run() {
             res.send(services)
         })
 
+        // Find all the bookings of a logged in users
         app.get('/bookings', verifyJWT, async (req, res) => {
             const patient = req.query.patient;
             const decodedEmail = req.decoded.email;
@@ -121,6 +135,7 @@ async function run() {
             }
         })
 
+        // Post a booking instead of same treatment, date, patinet
         app.post('/bookings', async (req, res) => {
             const bookings = req.body;
             const query = { treatment: bookings.treatment, date: bookings.date, patient: bookings.patient }
