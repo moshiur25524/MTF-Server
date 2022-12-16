@@ -58,9 +58,9 @@ async function run() {
             res.send(users)
         })
 
-        // app.delete('/user/:email', async (req, res) => {
+        // app.delete('/user/:email',verifyJWT, verifyAdmin, async (req, res) => {
         //     const email = req.params.email;
-        //     const result = await userCollection.deleteOne({ _id: ObjectId(email) })
+        //     const result = await userCollection.deleteOne({ email: email })
         //     res.send(result)
         // })
 
@@ -147,6 +147,12 @@ async function run() {
             else {
                 return res.status(403).send({ message: "forbidden access" })
             }
+        })
+
+        app.get('/booking/:id', verifyJWT, async(req, res)=>{
+            const {id} = req.params;
+            const booking = await BookingsCollection.findOne({_id: ObjectId(id)})
+            res.send(booking)
         })
 
         // Post a booking instead of same treatment, date, patinet
