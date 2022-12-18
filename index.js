@@ -3,6 +3,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const app = express()
 const port = process.env.PORT || 5000;
 
@@ -47,6 +48,17 @@ async function run() {
                 return res.status(403).send({ message: 'Forbidden' })
             }
         }
+
+        app.post('/create-payment-intent',verifyJWT, async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            })
+            res.send({ clientSecret: paymentIntent.client_secret })
+        })
 
         app.get('/tools', async (req, res) => {
             const tools = await serviceCollection.find({}).project({ name: 1 }).toArray()
@@ -99,7 +111,7 @@ async function run() {
             res.send({ result, token })
         })
 
-        app.get('/doctor',verifyJWT,verifyAdmin, async(req, res)=>{
+        app.get('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
             const doctors = await doctorCollection.find().toArray();
             res.send(doctors)
         })
@@ -112,7 +124,7 @@ async function run() {
 
         app.delete('/doctor/:email', verifyJWT, verifyAdmin, async (req, res) => {
             const email = req.params.email;
-            const result = await doctorCollection.deleteOne({email: email})
+            const result = await doctorCollection.deleteOne({ email: email })
             res.send(result)
         })
 
@@ -149,9 +161,9 @@ async function run() {
             }
         })
 
-        app.get('/booking/:id', verifyJWT, async(req, res)=>{
-            const {id} = req.params;
-            const booking = await BookingsCollection.findOne({_id: ObjectId(id)})
+        app.get('/booking/:id', verifyJWT, async (req, res) => {
+            const { id } = req.params;
+            const booking = await BookingsCollection.findOne({ _id: ObjectId(id) })
             res.send(booking)
         })
 
