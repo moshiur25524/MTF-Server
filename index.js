@@ -37,6 +37,7 @@ async function run() {
         const BookingsCollection = client.db("machine_tools").collection("bookings");
         const userCollection = client.db('machine_tools').collection("users")
         const doctorCollection = client.db('machine_tools').collection("doctors")
+        const paymentCollection = client.db('machine_tools').collection("payments")
 
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -49,7 +50,7 @@ async function run() {
             }
         }
 
-        app.post('/create-payment-intent',verifyJWT, async (req, res) => {
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
             const { price } = req.body;
             const amount = price * 100;
             const paymentIntent = await stripe.paymentIntents.create({
@@ -178,6 +179,23 @@ async function run() {
 
             const result = await BookingsCollection.insertOne(bookings)
             return res.send({ success: true, result })
+        })
+
+        app.patch('/booking/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) }
+            const payment = req.body;
+            const updatedDoc = {
+                $set:{
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+
+            const result = await paymentCollection.insertOne(payment)
+            const updatedBooking = await BookingsCollection.updateOne(filter, updatedDoc)
+            res.send(updatedDoc)
+
         })
 
         console.log('Database connected');
